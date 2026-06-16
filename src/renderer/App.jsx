@@ -1,9 +1,10 @@
-import WelcomePanel from './components/WelcomePanel.jsx';
+import ChatWindow from "./components/Chat/ChatWindow";
+
 
 export default function App() {
   return (
     <main className="app">
-      <WelcomePanel />
+        <ChatWindow />
     </main>
   );
 }
