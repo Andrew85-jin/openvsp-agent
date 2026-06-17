@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { runOpenVspAgent } from './openvspAgent';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -28,6 +29,21 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  ipcMain.handle('openvsp-agent:run-design-study', async (event, { runId, prompt }) => {
+    const workDir = path.join(app.getPath('userData'), 'openvsp-runs');
+
+    return runOpenVspAgent(prompt, {
+      runId,
+      workDir,
+      onEvent: (payload) => {
+        event.sender.send('openvsp-agent:run-event', {
+          runId,
+          ...payload,
+        });
+      },
+    });
+  });
+
   createWindow();
 
   app.on('activate', () => {

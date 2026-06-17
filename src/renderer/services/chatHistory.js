@@ -28,7 +28,7 @@ export function saveActiveChatSessionId(sessionId) {
   window.localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
 }
 
-export function createChatSession({ messages, agents }) {
+export function createChatSession({ messages, agents, report = null }) {
   const now = new Date().toISOString();
 
   return {
@@ -36,6 +36,7 @@ export function createChatSession({ messages, agents }) {
     title: 'New drone design chat',
     messages,
     agents,
+    report,
     createdAt: now,
     updatedAt: now,
   };

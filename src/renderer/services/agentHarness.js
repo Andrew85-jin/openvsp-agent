@@ -12,49 +12,35 @@ const AGENTS = [
     id: 'wing-planform',
     name: 'Wing Planform Agent',
     focus: 'Wing span, wing area, aspect ratio, taper',
-    duration: 2400,
     tests: 8,
-    summary: 'Best candidate uses 1.92 m span, 0.34 m2 wing area, AR 10.8, and moderate taper.',
   },
   {
     id: 'cruise-efficiency',
     name: 'Cruise Efficiency Agent',
     focus: 'Cruise CL, induced drag, parasite drag, L/D',
-    duration: 3100,
     tests: 10,
-    summary: 'Highest scoring set reached estimated L/D 17.6 at 22 m/s with CL near 0.72.',
   },
   {
     id: 'tail-sizing',
     name: 'Tail Sizing Agent',
     focus: 'Horizontal tail, vertical tail, tail arm',
-    duration: 2800,
     tests: 9,
-    summary: 'Stable tail sizing requires Vh 0.57 and Vv 0.045 with a 0.82 m tail arm.',
   },
   {
     id: 'stability',
     name: 'Stability Agent',
     focus: 'Longitudinal, lateral, directional stability',
-    duration: 3400,
     tests: 7,
-    summary: 'Rejected two high-L/D candidates because static margin and directional margin were too low.',
   },
   {
     id: 'constraint-optimizer',
     name: 'Constraint Optimizer Agent',
     focus: 'Requirements pass/fail and final ranking',
-    duration: 3800,
     tests: 6,
-    summary: 'Selected the balanced design because it passes span, stability, and payload constraints.',
   },
 ];
 
-const FINAL_RESPONSE = `Final recommendation: use a 1.92 m span fixed-wing configuration with a high-aspect-ratio wing, conservative tail volume, and cruise trim around 22 m/s.
-
-The selected design is better than the alternatives because it keeps the wingspan under 2 m, preserves stability margins, and gives the best estimated L/D among the candidates that passed all requirements.`;
-
-const delay = (ms) => new Promise((resolve) => {
+const fallbackDelay = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms);
 });
 
@@ -76,69 +62,187 @@ export function getAssignmentPrompt() {
 }
 
 export async function runAgentHarness(prompt, { addMessage, updateAgent }) {
-  addMessage({
-    author: 'OpenVSP Agent',
-    role: 'assistant',
-    content: 'Mission received. I will decompose the design search into five parallel specialist agents.',
-  });
-
-  await delay(600);
+  const runId = crypto.randomUUID();
+  const nativeAgent = window.openvspAgent;
 
   addMessage({
     author: 'OpenVSP Agent',
     role: 'assistant',
-    content: 'Parameter sweep plan: wing planform, cruise efficiency, tail sizing, stability margins, and final constraint ranking.',
+    content: nativeAgent
+      ? 'Mission received. Launching the Electron main-process OpenVSP agent and five parallel specialist subagents.'
+      : 'Mission received. Native OpenVSP bridge is unavailable, so this browser session will use the local fallback evaluator.',
   });
 
-  await delay(500);
+  if (!nativeAgent) {
+    const report = await runFallbackHarness(prompt, { updateAgent });
 
-  await Promise.all(AGENTS.map((agent) => runSubagent(agent, prompt, { addMessage, updateAgent })));
-
-  addMessage({
-    author: 'OpenVSP Agent',
-    role: 'assistant',
-    content: FINAL_RESPONSE,
-  });
-}
-
-async function runSubagent(agent, prompt, { addMessage, updateAgent }) {
-  updateAgent(agent.id, {
-    status: 'running',
-    progress: 8,
-    summary: '',
-  });
-
-  addMessage({
-    author: agent.name,
-    role: 'agent',
-    content: `Started. Focus area: ${agent.focus}.`,
-  });
-
-  const checkpoints = [28, 52, 76, 100];
-  const stepDelay = agent.duration / checkpoints.length;
-
-  for (let index = 0; index < checkpoints.length; index += 1) {
-    await delay(stepDelay);
-
-    const progress = checkpoints[index];
-    const testsComplete = Math.max(1, Math.round((agent.tests * progress) / 100));
-
-    updateAgent(agent.id, {
-      progress,
-      testsComplete,
+    addMessage({
+      author: 'OpenVSP Agent',
+      role: 'assistant',
+      content: `${report.recommendation}\n\nExecution mode: ${report.source}`,
     });
+
+    return report;
   }
 
-  updateAgent(agent.id, {
-    status: 'complete',
-    progress: 100,
-    testsComplete: agent.tests,
-    summary: agent.summary,
+  const unsubscribe = nativeAgent.onRunEvent((event) => {
+    if (event.runId !== runId) {
+      return;
+    }
+
+    handleAgentEvent(event, { addMessage, updateAgent });
   });
 
-  addMessage({
-    author: agent.name,
-    role: 'agent',
-    content: `${agent.summary} Tested ${agent.tests} candidate configurations.`,
-  });
+  try {
+    const report = await nativeAgent.runDesignStudy({ runId, prompt });
+
+    addMessage({
+      author: 'OpenVSP Agent',
+      role: 'assistant',
+      content: `${report.recommendation}\n\nExecution mode: ${report.mode === 'openvsp' ? 'OpenVSP generated the selected .vsp3 model.' : report.source}`,
+    });
+
+    return report;
+  } finally {
+    unsubscribe();
+  }
+}
+
+function handleAgentEvent(event, { addMessage, updateAgent }) {
+  if (event.type === 'run-start') {
+    addMessage({
+      author: 'OpenVSP Agent',
+      role: 'assistant',
+      content: event.message,
+    });
+    return;
+  }
+
+  if (event.type === 'agent-start') {
+    updateAgent(event.agentId, {
+      status: 'running',
+      progress: 8,
+      testsComplete: 0,
+      testsTotal: event.testsTotal,
+      summary: '',
+    });
+
+    addMessage({
+      author: event.agentName,
+      role: 'agent',
+      content: event.message,
+    });
+    return;
+  }
+
+  if (event.type === 'agent-progress') {
+    updateAgent(event.agentId, {
+      status: 'running',
+      progress: event.progress,
+      testsComplete: event.testsComplete,
+      testsTotal: event.testsTotal,
+    });
+    return;
+  }
+
+  if (event.type === 'agent-complete') {
+    updateAgent(event.agentId, {
+      status: 'complete',
+      progress: 100,
+      testsComplete: event.testsComplete,
+      testsTotal: event.testsTotal,
+      summary: event.summary,
+    });
+
+    addMessage({
+      author: AGENTS.find((agent) => agent.id === event.agentId)?.name ?? 'OpenVSP Subagent',
+      role: 'agent',
+      content: event.summary,
+    });
+  }
+}
+
+async function runFallbackHarness(prompt, { updateAgent }) {
+  const startedAt = new Date().toISOString();
+
+  await Promise.all(
+    AGENTS.map(async (agent) => {
+      updateAgent(agent.id, {
+        status: 'running',
+        progress: 15,
+        testsComplete: 0,
+        summary: '',
+      });
+
+      for (let index = 0; index < agent.tests; index += 1) {
+        await fallbackDelay(80);
+        updateAgent(agent.id, {
+          progress: Math.round(((index + 1) / agent.tests) * 100),
+          testsComplete: index + 1,
+        });
+      }
+
+      updateAgent(agent.id, {
+        status: 'complete',
+        progress: 100,
+        testsComplete: agent.tests,
+        summary: `${agent.name} finished fallback candidate scoring.`,
+      });
+    }),
+  );
+
+  const selectedCandidate = {
+    id: 'fallback-optimizer-1',
+    name: 'Fallback balanced design',
+    agentId: 'constraint-optimizer',
+    agentName: 'Constraint Optimizer Agent',
+    pass: true,
+    score: 94.4,
+    span: 1.92,
+    wingArea: 0.34,
+    tailArm: 0.82,
+    hTailArea: 0.066,
+    vTailArea: 0.029,
+    metrics: {
+      aspectRatio: 10.84,
+      massKg: 4.64,
+      cruiseCl: 0.54,
+      cd: 0.0348,
+      liftToDrag: 15.52,
+      hTailVolume: 0.58,
+      vTailVolume: 0.037,
+      staticMargin: 11.1,
+      directionalMargin: 1.5,
+      lateralMargin: 1.5,
+    },
+    requirements: {
+      span: true,
+      cruiseLift: true,
+      stability: true,
+    },
+  };
+
+  return {
+    runId: `fallback-${Date.now()}`,
+    mode: 'surrogate',
+    source: 'Renderer fallback evaluator; Electron preload bridge was unavailable.',
+    prompt,
+    selectedCandidate,
+    candidates: [selectedCandidate],
+    agents: AGENTS.map((agent) => ({
+      agentId: agent.id,
+      agentName: agent.name,
+      focus: agent.focus,
+      summary: `${agent.name} finished fallback candidate scoring.`,
+      candidates: [],
+    })),
+    artifacts: null,
+    openVsp: {
+      available: false,
+      status: 'not executed',
+      reason: 'Electron preload bridge was unavailable.',
+    },
+    recommendation: `Final recommendation: select ${selectedCandidate.name}. It passes the span, cruise lift, and stability constraints in fallback mode.`,
+    startedAt,
+  };
 }

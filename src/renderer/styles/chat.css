@@ -299,6 +299,193 @@
   font-weight: 700;
 }
 
+.analysis-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(0, 1.08fr);
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.simulation-report {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 18px 20px;
+  border-right: 1px solid var(--color-border);
+  background: #fbfcfe;
+}
+
+.simulation-report--empty {
+  justify-content: center;
+}
+
+.simulation-report__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-kicker {
+  margin: 0 0 4px;
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.simulation-report h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.16rem;
+  line-height: 1.25;
+}
+
+.simulation-report p {
+  margin: 0;
+}
+
+.simulation-report__summary {
+  color: var(--color-text);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.run-mode {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.run-mode--openvsp {
+  background: #e7f7ef;
+  color: #1f7a4c;
+}
+
+.run-mode--surrogate {
+  background: #fff4d8;
+  color: #8a5a00;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-grid div {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 10px;
+}
+
+.metric-grid span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.metric-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.requirement-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.requirement-list span,
+.candidate-table .is-pass,
+.candidate-table .is-fail {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.is-pass {
+  background: #e8f7ef;
+  color: #20784d;
+}
+
+.is-fail {
+  background: #feecec;
+  color: #b42318;
+}
+
+.candidate-table {
+  display: grid;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.candidate-table__row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr 0.5fr 0.5fr 0.58fr;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.76rem;
+}
+
+.candidate-table__row:first-child {
+  border-top: 0;
+}
+
+.candidate-table__row--head {
+  background: var(--color-surface-muted);
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.candidate-table__row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-panel {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 10px;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.artifact-panel strong {
+  color: var(--color-text);
+}
+
+.artifact-panel small {
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
 .message-list {
   display: flex;
   flex-direction: column;
@@ -415,6 +602,17 @@
   .agent-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .analysis-workspace {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .simulation-report {
+    max-height: 360px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
 }
 
 @media (max-width: 640px) {
@@ -448,10 +646,23 @@
   }
 
   .chat-run-summary,
+  .simulation-report,
   .message-list,
   .message-input {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .candidate-table__row {
+    grid-template-columns: 1fr 0.5fr 0.5fr 0.58fr;
+  }
+
+  .candidate-table__row span:nth-child(2) {
+    display: none;
   }
 
   .message {

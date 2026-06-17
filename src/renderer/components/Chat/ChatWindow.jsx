@@ -1,5 +1,6 @@
 import MessageInput from "./MessageInput";
 import MessageList from "./MessageList";
+import SimulationReport from "./SimulationReport";
 
 import "../../styles/chat.css";
 import { formatSessionDate, useChat } from "../../hooks/useChat";
@@ -12,6 +13,7 @@ export default function ChatWindow() {
         activeSessionId,
         messages,
         agents,
+        report,
         completedAgents,
         isRunning,
         createNewChat,
@@ -114,7 +116,10 @@ export default function ChatWindow() {
                     <span>{isRunning ? "Running parallel study" : "Idle"}</span>
                 </div>
 
-                <MessageList messages={messages} />
+                <div className="analysis-workspace">
+                    <SimulationReport report={report} />
+                    <MessageList messages={messages} />
+                </div>
                 <MessageInput onSend={sendMessage} disabled={isRunning} />
             </div>
         </section>

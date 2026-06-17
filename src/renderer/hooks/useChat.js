@@ -50,6 +50,7 @@ const normalizeSession = (session) => {
         agents: Array.isArray(session.agents) && session.agents.length > 0
             ? session.agents
             : createInitialAgents(),
+        report: session.report ?? null,
         createdAt: session.createdAt || now,
         updatedAt: session.updatedAt || session.createdAt || now,
     };
@@ -99,6 +100,7 @@ export function useChat() {
 
     const messages = activeSession?.messages ?? [];
     const agents = activeSession?.agents ?? createInitialAgents();
+    const report = activeSession?.report ?? null;
 
     const completedAgents = useMemo(
         () => agents.filter((agent) => agent.status === "complete").length,
@@ -223,6 +225,7 @@ export function useChat() {
         updateSession(runSessionId, (session) => ({
             ...session,
             agents: createInitialAgents(),
+            report: null,
         }));
 
         addMessageToSession(
@@ -236,10 +239,15 @@ export function useChat() {
         );
 
         try {
-            await runAgentHarness(prompt, {
+            const runReport = await runAgentHarness(prompt, {
                 addMessage: (message, options) => addMessageToSession(runSessionId, message, options),
                 updateAgent: (agentId, patch) => updateAgentInSession(runSessionId, agentId, patch),
             });
+
+            updateSession(runSessionId, (session) => ({
+                ...session,
+                report: runReport,
+            }));
         } finally {
             if (runIdRef.current === activeRunId) {
                 isRunningRef.current = false;
@@ -260,6 +268,7 @@ export function useChat() {
         activeSessionId,
         messages,
         agents,
+        report,
         completedAgents,
         isRunning,
         createNewChat,
