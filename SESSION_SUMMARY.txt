@@ -1,0 +1,425 @@
+16/06/2026
+Пiдсумок сесiї
+================
+
+Що було зроблено
+----------------
+
+1. Перевiрено структуру проєкту.
+   Основний Electron-проєкт знаходиться у папцi:
+
+   openvsp-agent
+
+2. До Electron/Vite проєкту додано React.
+   Було встановлено залежностi:
+
+   - react
+   - react-dom
+   - @vitejs/plugin-react@4.7.0
+
+3. Renderer переведено з plain JavaScript на React.
+   Старий файл src/renderer.js було замiнено на React entrypoint.
+
+4. Файли проєкту структуровано.
+   Нова структура src:
+
+   src/
+     main/
+       main.js
+     preload/
+       preload.js
+     renderer/
+       index.jsx
+       App.jsx
+       components/
+         WelcomePanel.jsx
+       styles/
+         global.css
+
+5. Electron Forge конфiг оновлено пiд новi entrypoints:
+
+   - src/main/main.js
+   - src/preload/preload.js
+
+6. index.html оновлено пiд React root:
+
+   <div id="root"></div>
+   <script type="module" src="/src/renderer/index.jsx"></script>
+
+
+Змiненi файли
+-------------
+
+У папцi openvsp-agent було змiнено або створено:
+
+   package.json
+   package-lock.json
+   vite.renderer.config.mjs
+   forge.config.js
+   index.html
+   src/main/main.js
+   src/preload/preload.js
+   src/renderer/index.jsx
+   src/renderer/App.jsx
+   src/renderer/components/WelcomePanel.jsx
+   src/renderer/styles/global.css
+
+Було видалено старi файли:
+
+   src/main.js
+   src/preload.js
+   src/renderer.js
+   src/App.jsx
+   src/index.css
+
+
+Команди, якi запускались
+------------------------
+
+Для огляду проєкту:
+
+   Get-ChildItem -Force
+   rg --files
+   git status --short
+   git -c safe.directory=... status --short
+
+Для перевiрки залежностей:
+
+   npm ls react react-dom @vitejs/plugin-react --depth=0
+
+Для встановлення React:
+
+   npm install react react-dom
+   npm install -D @vitejs/plugin-react
+   npm install -D @vitejs/plugin-react@4
+
+Для перевiрки збiрки:
+
+   npm run package
+
+Для тимчасової перевiрки dev server:
+
+   Start-Process npm.cmd ...
+   Invoke-WebRequest http://127.0.0.1:5173
+   Stop-Process
+   netstat -ano
+
+
+Проблеми, якi були знайденi
+---------------------------
+
+1. Git показав помилку dubious ownership.
+   Причина: репозиторiй належить користувачу Andrew, а команди виконувались пiд sandbox-користувачем.
+   Для перевiрок використовувався одноразовий параметр:
+
+   git -c safe.directory=...
+
+2. PowerShell не прийняв оператор &&.
+   Тому npm-команди запускались окремо.
+
+3. Перший npm install завис у sandbox i завершився timeout.
+   Пiсля дозволу на зовнiшнiй доступ пакети встановились успiшно.
+
+4. Остання версiя @vitejs/plugin-react вимагала Vite 8.
+   У проєктi використовується Vite 5.4.21, тому була встановлена сумiсна версiя:
+
+   @vitejs/plugin-react@4.7.0
+
+5. npm run package кiлька разiв падав у sandbox через доступ до .vite/build або конфiгiв.
+   Пiсля запуску з пiдвищеним дозволом збiрка проходила успiшно.
+
+6. Browser plugin для вiзуальної перевiрки був неповний.
+   У кешi не знайшовся browser-client.mjs, тому фiнальна перевiрка була через npm run package.
+
+7. npm audit показав 30 vulnerabilities у dependency tree.
+   Вони не виправлялись, бо це окрема задача.
+
+
+Поточний результат
+------------------
+
+Electron-проєкт тепер має React renderer, нормальну структуру файлiв i проходить production packaging:
+
+   npm run package
+
+
+Що робити далi
+--------------
+
+1. Запустити застосунок у dev-режимi:
+
+   cd openvsp-agent
+   npm start
+
+2. Перевiрити UI вручну в Electron-вiкнi.
+
+3. Окремо розiбрати npm audit:
+
+   npm audit
+
+4. Продовжувати розробку UI у:
+
+   openvsp-agent/src/renderer/components/
+
+
+16/06/2026
+Підсумок додаткової сесії
+=========================
+
+Що було зроблено
+----------------
+
+1. Було прочитано файл завдання:
+
+   Р2 - Project.txt
+
+   Після цього було розписано рекомендований план реалізації Electron app
+   для OpenVSP AI agent harness:
+
+   - чат з агентом;
+   - секція результатів симуляцій;
+   - 5 паралельних subagents;
+   - traceability UX для відстеження симуляцій;
+   - майбутній OpenVSP/VSPAERO adapter;
+   - future_work.md для речей, які не варто робити в MVP.
+
+2. Було додано першу робочу версію чату з агентами.
+
+   Реалізовано:
+
+   - головний OpenVSP Agent;
+   - 5 parallel subagents;
+   - запуск готового mission prompt через кнопку Run mission prompt;
+   - повідомлення користувача;
+   - повідомлення головного агента;
+   - повідомлення subagents;
+   - progress виконання кожного subagent;
+   - фінальна рекомендація після завершення всіх агентів.
+
+3. Було додано сервіс agent harness:
+
+   src/renderer/services/agentHarness.js
+
+   У ньому описано:
+
+   - assignment prompt;
+   - список 5 агентів;
+   - початковий стан агентів;
+   - симуляцію паралельної роботи через Promise.all;
+   - оновлення progress/status;
+   - фінальну відповідь агента.
+
+4. Було оновлено Chat components:
+
+   src/renderer/components/Chat/ChatWindow.jsx
+   src/renderer/components/Chat/MessageInput.jsx
+   src/renderer/components/Chat/MessageList.jsx
+   src/renderer/components/Chat/MessageItem.jsx
+
+   Компоненти тепер підтримують:
+
+   - state для messages;
+   - state для agents;
+   - disabled state під час виконання agent run;
+   - auto-scroll списку повідомлень;
+   - розділення повідомлень за ролями user / assistant / agent.
+
+5. Було додано можливість зберігати історію чатів.
+
+   Для цього створено файл:
+
+   src/renderer/services/chatHistory.js
+
+   Історія зберігається у localStorage:
+
+   - openvsp-agent.chatSessions
+   - openvsp-agent.activeChatSessionId
+
+   Після перезавантаження застосунок відкриває останній активний чат.
+
+6. Було додано можливість створювати нові чати.
+
+   У sidebar History додано кнопку:
+
+   New chat
+
+   Новий чат отримує:
+
+   - welcome message;
+   - чистий стан 5 агентів;
+   - власний id;
+   - createdAt / updatedAt;
+   - title, який оновлюється за першим user prompt.
+
+7. Було додано можливість переходити в старі чати.
+
+   У лівій панелі History відображаються всі chat sessions.
+   Для кожного чату показано:
+
+   - title;
+   - кількість повідомлень;
+   - дату останнього оновлення.
+
+   Під час виконання агентів перемикання чатів заблоковане,
+   щоб async-події не записались у неправильну сесію.
+
+8. Було додано можливість видаляти чати.
+
+   У кожному history item додано кнопку:
+
+   x
+
+   Логіка видалення:
+
+   - якщо видалено неактивний чат, активний чат не змінюється;
+   - якщо видалено активний чат, відкривається наступний доступний чат;
+   - якщо видалено останній чат, автоматично створюється новий порожній чат;
+   - під час виконання агентів видалення заблоковане.
+
+9. Було оновлено стилі чату.
+
+   Основні стилі Chat компонента винесено в:
+
+   src/renderer/styles/chat.css
+
+   Додано стилі для:
+
+   - chat shell;
+   - history sidebar;
+   - кнопки New chat;
+   - chat history items;
+   - кнопки delete chat;
+   - chat header;
+   - agent cards;
+   - agent progress bars;
+   - message bubbles;
+   - message input;
+   - responsive layout.
+
+10. Глобальні стилі було відокремлено від стилів Chat компонента.
+
+   У global.css залишено:
+
+   - CSS variables;
+   - базовий reset;
+   - body/root/app layout;
+   - загальні focus/selection/disabled styles.
+
+   Стилі, які стосуються Chat, перенесено в chat.css.
+
+
+Змінені або створені файли
+--------------------------
+
+   src/renderer/components/Chat/ChatWindow.jsx
+   src/renderer/components/Chat/MessageInput.jsx
+   src/renderer/components/Chat/MessageList.jsx
+   src/renderer/components/Chat/MessageItem.jsx
+   src/renderer/services/agentHarness.js
+   src/renderer/services/chatHistory.js
+   src/renderer/styles/chat.css
+   src/renderer/styles/global.css
+   Р2 - Project.txt
+
+
+Команди, які запускались
+------------------------
+
+Для огляду файлів:
+
+   Get-ChildItem -Force
+   Get-ChildItem -Recurse -File
+   Get-Content ...
+   rg ...
+
+Для перевірки git status:
+
+   git -c safe.directory=C:/Users/Andrew/WebstormProjects/electron-ai-chat/openvsp-agent status --short
+
+Для перевірки build:
+
+   npm exec vite -- --config vite.renderer.config.mjs build
+
+Після build перевірки тимчасовий dist/ видалявся:
+
+   Remove-Item -LiteralPath dist -Recurse -Force
+
+
+Проблеми, які були знайдені
+---------------------------
+
+1. Звичайний git status не запускався через dubious ownership.
+   Для перевірок використовувався одноразовий параметр:
+
+   git -c safe.directory=...
+
+2. Vite build у sandbox не міг прочитати config:
+
+   Cannot read directory "../../..": Access is denied.
+   Could not resolve vite.renderer.config.mjs
+
+   Тому build запускався з підвищеним дозволом.
+
+3. PowerShell не прийняв оператор:
+
+   ||
+
+   Тому пошук encoding-артефактів було повторено без shell chaining.
+
+4. У ChatWindow.jsx був знайдений encoding-артефакт.
+   Його було прибрано і замінено на ASCII separator:
+
+   -
+
+
+Поточний результат
+------------------
+
+Зараз у проєкті є робочий Chat UI для OpenVSP Agent Harness:
+
+   - можна запускати mission prompt;
+   - агент розкладає задачу на 5 parallel subagents;
+   - subagents показують progress і результати;
+   - чат зберігає історію;
+   - можна створювати нові чати;
+   - можна відкривати старі чати;
+   - можна видаляти чати;
+   - історія зберігається в localStorage.
+
+Build перевірка проходить успішно:
+
+   npm exec vite -- --config vite.renderer.config.mjs build
+
+
+Що робити далі
+--------------
+
+1. Додати Simulation Result section окремо від chat window.
+
+2. Додати таблицю explored designs:
+
+   - parameter values tested;
+   - aerodynamic results;
+   - pass/fail;
+   - reason for failure.
+
+3. Додати графіки:
+
+   - L/D comparison;
+   - stability margins;
+   - design ranking.
+
+4. Додати простий simulation engine:
+
+   - aspect ratio;
+   - CL;
+   - induced drag;
+   - estimated CD;
+   - estimated L/D;
+   - horizontal tail volume;
+   - vertical tail volume;
+   - stability pass/fail.
+
+5. Додати future_work.md.
+
+6. Додати README з інструкцією запуску проєкту.
